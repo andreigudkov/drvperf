@@ -1,0 +1,278 @@
+.\"
+.\" Copyright (c) 2015-2016 Andrei Gudkov <gudokk@gmail.com>
+.\" 
+.\" Permission is hereby granted, free of charge, to any person obtaining a copy
+.\" of this software and associated documentation files (the "Software"), to deal
+.\" in the Software without restriction, including without limitation the rights
+.\" to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+.\" copies of the Software, and to permit persons to whom the Software is
+.\" furnished to do so, subject to the following conditions:
+.\" 
+.\" The above copyright notice and this permission notice shall be included in all
+.\" copies or substantial portions of the Software.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+.\" IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+.\" FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+.\" AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+.\" LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+.\" OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+.\" SOFTWARE.
+.\"
+.TH drvperf 1 "January 2017" "drvperf/1.7"
+.SH NAME
+drvperf \- measure mass storage performance
+.SH SYNOPSIS
+\fBdrvperf\fP [options] \fItest\fP \fIpath\fP
+.P
+\fBdrvperf\fP \fB--help\fP
+.P
+\fBdrvperf\fP \fB--version\fP
+.SH DESCRIPTION
+.PP
+Drvperf is an utility to measure various characteristics of mass storage devices and mass storage subsystem as a whole 
+in Linux environment.
+It includes options to test common access patterns as well as intrinsic device characteristics.
+.PP
+Both \fItest\fP and \fIpath\fP must be specified to start test.
+Depending on object of testing, \fIpath\fP may be a raw device (for example, /dev/sda) - used primarily to test hardware drives,
+partition (/dev/sda5), or a regular file - provides realworld benchmarking.
+\fItest\fP must be one of the following:
+.IP "\fBseqread\fP" 4
+.PD 0
+.IP "\fBseqwrite\fP" 4
+.PD
+These tests measure sequential access performance in MB/s, read and write correspondingly.
+Each test makes 100 probes (\fB--probes\fP) by default, each probe is 128 MiB long (\fB--probe-length\fP).
+Probe offsets are scattered uniformly along \fIpath\fP address space.
+Sequential test is always single-threaded non-concurrent.
+.IP
+If testing HDDs, expect performance not to depend on operation type (read or write), but to depend on offset: 
+performance may drop down by tens of percents at higher offsets.
+Contrary, SSDs have performance which doesn't depend on offsets at all, but writes are much slower than reads.
+In severe cases, this difference may be of order of magnitude due to large number of flash erases performed.
+.IP "\fBrndread\fP" 4
+.PD 0
+.IP "\fBrndwrite\fP" 4
+.PD
+These tests measure random access performance in number of operations per second (IOPS).
+20,000 probes (\fB--probes\fP) are made at random positions, each one is 1 physical sector in length (\fB--probe-length\fP).
+By default, only one probe is made at a time (\fB--concurrent\fP).
+.IP
+HDDs are very slow at random access: typical HDD provides only ~200 IOPS for both reads and writes.
+SSDs may be able to serve up to 10,000 reads/sec (one read at a time) and more than 100,000 reads/sec with properly tuned 
+\fB--concurrent\fP value.
+Writes are slower.
+Depending on type of flash memory (SLC/MLC), its wear, and availability of free pages, writes may be from couple of times 
+to orders of magnitude slower compared to reads.
+.IP "\fBcncread\fP" 4
+.PD 0
+.IP "\fBcncwrite\fP" 4
+.PD
+Detects optimal number of concurrently executed requests in order to maximize throughput (IOPS).
+Test is performed by gradually increasing number of concurrent requests until throughput (IOPS)
+is near its maximum and 90-percentile latency is still not too bad.
+Result of this test is max IOPS along with \fB--concurrency\fP value at which this figure was achieved.
+Because parameters of the ranking formula were tweaked for some generic case, result doesn't necessearily
+fit all sorts of applications.
+.IP
+This test is usable only if underlying IO system supports multiple parallel requests, such as solid state
+drives and RAIDs, but not hard disk drives.
+SSDs demonstrate concurrency of at least 8 and up to 100.
+.TP
+\fBfullstroke\fP
+HDD specific.
+Measures time it takes HDD to reposition actuator arm from innermost position to outermost position or vice versa.
+Also produces rotational latency in revolutions per minute (RPM).
+.IP
+Typical HDD demonstrates full stroke seek time of 5..30 ms.
+Full stroke seek time is the slowest among all possible seek times.
+This metric is important when HDD is used for random access into large dataset.
+For example, database performance may be limited by rotational latency when dataset is small because seeks are packed closely.
+But with dataset growth seek time will eventually become a bottleneck.
+.IP
+Common values for rotational latency are 5400 RPM (laptop HDDs), 7200 RPM (PCs and middle-end servers), 
+10,000 and 15,000 RPM (enterprise class servers).
+Rotational latency influences both sequential and random access performance.
+.TP
+\fBtracktotrack\fP
+HDD specific.
+Measures time it takes HDD to reposition actuator arm between nearest tracks.
+Also produces rotational latency in revolutions per minute (RPM).
+.IP
+HDD performs track-to-track seeks during sequential read/write.
+Typically is less than 2 ms.
+.SH OPTIONS
+.TP
+\fB\-\-probes\fP \fIcount\fP
+Number of probes to make.
+Default value depends on selected test.
+.TP
+\fB\-\-probe-length\fP \fIbytes\fP
+Number of bytes to read/write during each probe.
+Sequential tests are performed with 128 MiB probes by default.
+Default probe length for random access tests is computed by computing maximum of two values: physical sector size and 
+logical sector size.
+Such approach ensures that neither OS nor drive itself will fall back to read-modify-write sequence.
+Value may be followed by decimal (\fB12.5mb\fP) or binary (\fB16kib\fP) suffix.
+.TP
+\fB\-\-cache\fP \fR{\fP\fBbypass\fP\fR|\fP\fBdrop\fP\fR|\fP\fBkeep\fP\fR}\fP
+Specifies how to deal with page cache.
+Default value is \fBbypass\fP which makes IO operations to bypass caching layer entirely (O_DIRECT).
+If \fBdrop\fP is selected then caches are dropped one time before test is started.
+This selection requires superuser permission.
+Note that dropping caches may severely reduce performance of hot system with lots of RAM until caches are refilled again.
+Finally, \fBkeep\fP instructs drvperf to do nothing special about caching.
+.TP
+\fB\-\-sync\fP \fR{\fP\fBnone\fP\fR|\fP\fBsync\fP\fR|\fP\fBdsync\fP\fR}\fP
+Governs synchronization guarantees.
+Default value is \fBsync\fR.
+See \fBO_SYNC\fP and \fBO_DSYNC\fP constants in \fBopen(2)\fP.
+.TP
+\fB\-\-align\fP \fIbytes\fP
+Specifies alignment for probe offsets.
+Default value is large enough to avoid read-modify-write (see \fB--probe-length\fP).
+Setting this value to 1 disables aligning altogether.
+Note that if \fB--pagecache\fP is \fBbypass\fP (which is default) then this value must be a multiple of logical 
+sector size (requirement of O_DIRECT).
+Value may be followed by decimal (\fB12.5mb\fP) or binary (\fB16kib\fP) suffix.
+.TP
+\fB\-\-concurrent\fP \fIcount\fP
+Maximal number of concurrently executed requests for random access tests, default is 1.
+.TP
+\fB\-\-max\-buffer\-size\fP \fIbytes\fP
+Limits size of each separate IO buffer.
+If buffer is smaller than request, then vector IO is used, probably multiple times, until request is entirely fulfilled.
+Default value is 128 MiB.
+Value may be followed by decimal (\fB12.5mb\fP) or binary (\fB16kib\fP) suffix.
+.TP
+\fB\-\-maxcylsize\fP \fR{\fBauto\fR|\fIbytes\fR}\fP
+Used in \fBtracktotrack\fP test.
+Specifies size of the largest cylinder.
+Because of zone bit recording (ZBR), different cylinders have different sizes.
+This option must be set to size of the largest cylinder, located in the outer rim of platter assembly.
+Jumping between two locations standing apart by this value guarantees track-to-track seek.
+.IP
+By default, it is set to \fBauto\fP meaning that a round of preliminary tests is performed to detect
+correct value (at the cost of extra running time).
+Alternatively, this value may be specified explicitly.
+Value may be followed by decimal (\fB1.5mb\fP) or binary (\fB128kib\fP) suffix.
+.TP
+\fB\-\-method\fP \fR{\fBauto\fR|\fBbio\fR|\fBkaio\fR}\fP
+Specifies method of performing probes for random access tests.
+If \fBbio\fP is selected, probes are made in serial manner by using standard blocking IO.
+\fBkaio\fP uses kernel AIO (see \fBio_submit\fP(2), not to be confused with glibc AIO) to issue probes concurrently.
+\fBauto\fP selects method automatically: \fBbio\fP if \fB--concurrent 1\fP and \fBkaio\fP otherwise.
+.TP
+\fB\-\-rndseed\fP \fInumber\fP
+Positive number used as random seed.
+Test runs with identical settings and random seeds will issue identical sequences of probes.
+.TP
+\fB\-\-window\-begin\fP \fIbytes\fP
+.ns
+.TP
+\fB\-\-window\-end\fP \fIbytes\fP
+.ns
+.TP
+\fB\-\-window\-length\fP \fIbytes\fP
+These three options limit probe offsets to given window.
+Window begin value is inclusive, while window end value is exclusive.
+All three options are present for convenience, and maximium of any two options may be specified at once.
+Values may be followed by decimal (\fB30gb\fP), binary (\fB16gib\fP) or percentage (\fB15.5%\fP) suffix.
+In latter case, value is considered to be percentage relative to \fIpath\fP size.
+For example, \fB--window-begin 15%\fP for 1TB drive means that each probe offset is at least 150GB.
+.TP
+\fB\-\-dump\-file\fP \fIpath\fP
+If specified, all probes are dumped into given file after test is complete.
+File is written in tab-separated values (.tsv) format and contains at least following fields: 
+offset, probe time and probe length.
+Full field list depends on selected test.
+File is intended to be used for further analysis with \fBawk\fP(1) or spreadsheet program.
+.TP
+\fB\-\-force\fP
+Disable sanity checks (like attempt to write to partition device which is mounted).
+.TP
+\fB\-\-debug\fP
+Turn on printing debug messages.
+.TP
+\fB\-\-help\fP
+Print brief help and exit.
+.TP
+\fB\-\-version\fP
+Print version number and exit.
+.SH NOTES
+.PP
+* Tests which measure write performance will destroy data. Examine what you've typed before hitting <Enter>.
+.br
+* Running drvperf may create high load: do not use in production environment.
+.br
+* Device under test should not be used by other activites while drvperf is running. Otherwise results are not reliable.
+.SH EXAMPLE
+Detect all parameters automatically and run sequential read test.
+Print speed in MB/s once test has been completed:
+.PP
+.nf
+.in +4n
+\fR#\fP \fBdrvperf seqread /dev/sda\fP
+ ...
+Sequential read, each probe 134,217,728 bytes long:
+  min speed 145.53 MB/sec (at offset 7,732,142,080)
+  avg speed 433.60 MB/sec
+  max speed 536.41 MB/sec (at offset 43,189,141,504)
+.in
+.fi
+.PP
+Run random access test by making 500K reads, each 4096 in length, aligned by the same value, 
+allowing 4 concurrent requests.
+Such huge number of reads is reasonable for SSDs only.
+Print IOPS once test has completed:
+.PP
+.nf
+.in +4n
+\fR#\fP \fBdrvperf --probes 500000 --probe-length 4096 --align 4096 --concurrent 4 rndread /dev/sda\fP
+ ...
+Random read, each probe 4096 bytes, alignment 4096, max 4 concurrent requests
+Latency:
+  min  0.032 ms
+  avg  0.121 ms, stddev 0.048 ms
+  p90  0.167 ms (90% of probes were faster)
+  p98  0.193 ms
+  max  1.535 ms
+Throughput:
+  overall             32818 IOPS
+  overall/concurrent   8204 IOPS
+.in
+.fi
+.PP
+Create 25GB extent file and run random write test with unprivileged user:
+.PP
+.nf
+.in +4n
+\fR$\fP \fBfallocate -l $((25*1000*1000*1000)) extent\fP
+\fR$\fP \fBdrvperf rndwrite extent\fP
+ ...
+\fR$\fP \fBrm extent\fP
+.in
+.fi
+.PP
+Run fullstroke test in specified window.
+Useful for analyzing bottlenecks in performance before device partitioning:
+.PP
+.nf
+.in +4n
+\fBdrvperf --window-begin 70% --window-end 100% fullstroke /dev/sdb\fP
+  ...
+  fullstroke seek time: 13.995 ms
+       revolution time: 10.781 ms
+      rotational speed: 5565 RPM
+.in
+.fi
+.SH AUTHOR
+Written by Andrei Gudkov <gudokk@gmail.com>.
+.SH "SEE ALSO"
+\fBiostat\fP(1),
+\fBatop\fP(1),
+\fBhdparm\fP(8),
+\fBsmartctl\fP(8)
+.br
+"Storage subsystem performance: analysis and recipes", \fBhttp://gudok.xyz/sspar/\fP

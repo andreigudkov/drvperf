@@ -1,0 +1,26 @@
+==============
+Major features
+==============
+
+Ergonomics: limit tests not by probe count but by running time (+probe_count calibration +passes)
+Multithreaded mode
+Test to detect disk readahead
+
+
+============
+Pleasantries
+============
+
+Add global test: tests everything
+Preheat queue in kaio mode: burn extra 5% of probes on preheating
+In seq tests, split window in even chunks and generate one offset per chunks *randomly* inside its chunk
+Support for BLKALIGNOFF, /sys/class/block/sda/alignment_offset
+Print current results on sigint before exit
+Automatize creating extent file
+Tracktotrack test: make --maxcylsize first guess depending on path size
+Generate HTML+SVG graph
+Option to specify latency importance as coefficient for cncread/cncwrite
+Validate options compatability (+help)
+Test to detect min/max cylinder size and distribution
+Make progressive probe_count in cncread/cncwrite
+
