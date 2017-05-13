@@ -1,0 +1,14 @@
+Source: drvperf
+Maintainer: Andrei Gudkov <gudokk@gmail.com>
+Section: misc
+Priority: optional
+Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 9)
+
+Package: drvperf
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: mass storage device benchmark
+ Drvperf is an utility to measure various characteristics of mass storage
+ devices and mass storage subsystem as a whole in Linux environment.
+

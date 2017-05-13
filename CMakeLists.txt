@@ -12,3 +12,9 @@ set_target_properties(drvperf PROPERTIES COMPILE_FLAGS
 set_target_properties(drvperf PROPERTIES LINK_FLAGS "-rdynamic")
 target_link_libraries(drvperf m)
 
+install(TARGETS drvperf DESTINATION bin)
+install(
+  FILES ${CMAKE_CURRENT_SOURCE_DIR}/drvperf.1
+  DESTINATION share/man/man1
+)
+
