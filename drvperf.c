@@ -61,8 +61,8 @@
 /******************************* MACRO DEFINITIONS ************************************/
 
 #define VER_MAJOR 1
-#define VER_MINOR 7
-#define VER_DATE "January 2017"
+#define VER_MINOR 8
+#define VER_DATE "May 2017"
 
 #define arrlen(arr) (int64_t) (sizeof(arr) / sizeof((arr)[0]))
 

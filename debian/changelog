@@ -1,3 +1,9 @@
+drvperf (1.8-1) unstable; urgency=medium
+
+  * Added debian packaging rules
+
+ -- Andrei Gudkov <gudokk@gmail.com>  Sun, 14 May 2017 01:32:31 +0300
+
 drvperf (1.7-1) unstable; urgency=medium
 
   * Initial release
