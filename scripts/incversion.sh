@@ -53,4 +53,5 @@ grep -E '^\.TH drvperf 1 "'$month' '$year'" "drvperf/'$major'\.'$minor'"$' drvpe
 # Commit
 echo "Committing ..."; sleep 5
 git commit -a -m "Updated version to ${major}.${minor} (auto)"
+git tag "v${major}.${minor}"
 
