@@ -41,6 +41,7 @@
 #include <float.h>
 
 #include <unistd.h>
+#include <sys/sysmacros.h> // major, minor
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
