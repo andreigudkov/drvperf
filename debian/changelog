@@ -1,3 +1,9 @@
+drvperf (1.9-1) unstable; urgency=medium
+
+  * Fixed compilation error caused by deprecation of minor/major funcs
+
+ -- Andrei Gudkov <gudokk@gmail.com>  Thu, 06 Jun 2019 19:39:41 +0300
+
 drvperf (1.8-1) unstable; urgency=medium
 
   * Added debian packaging rules
